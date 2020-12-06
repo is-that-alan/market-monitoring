@@ -40,8 +40,11 @@ def user_input_features():
 
 symbol, start, end = user_input_features()
 
-start = pd.to_datetime(start)
-end = pd.to_datetime(end)
+try:
+    start = pd.to_datetime(start)
+    end = pd.to_datetime(end)
+except ValueError:
+    st.error('Please enter a valid Date with format yyyy-mm-dd')
 
 
 tickerData = yf.Ticker(symbol)
