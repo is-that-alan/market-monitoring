@@ -4,5 +4,3 @@ pandas
 matplotlib
 numpy
 plotly
-base64
-io
