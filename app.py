@@ -10,6 +10,13 @@ from plotly.subplots import make_subplots
 import base64
 from io import BytesIO
 
+### for rss
+import json
+import requests
+import xmltojson
+import numpy as np
+from textblob import TextBlob
+import datetime
 
 
 #################CONFIG##########################
@@ -122,7 +129,42 @@ with st.beta_expander('Stock Info'):
     st.json(tickerInfo)
 ########################################################################################################################################
 
+def get_news(query,days=1):
+    def google_news(query, days):
+        link = "https://news.google.com/news/rss/headlines/section/topic/BUSINESS/search?q={}+when:{}d".format(query,days)
+        return link
+    link = google_news(query,days)
+    r = requests.get(link)
+    res = json.loads(xmltojson.parse(requests.get(link).text))
+    headlines =[]
+    for item in res['rss']["channel"]['item']:
+        headline = {}
+        headline['Date'] = item['pubDate']
+        headline['Title'] = item['title']
+        headline['Link'] = item["link"]
+        headlines.append(headline)
+    news = pd.DataFrame(headlines)
+    polarity = lambda x: round(TextBlob(x).sentiment.polarity,2)
+    subjectivity = lambda x: round(TextBlob(x).sentiment.subjectivity,2)
+    news_polarity = np.zeros(len(news['Title']))
+    news_subjectivity = np.zeros(len(news['Title']))
+    for idx, headline in enumerate(news["Title"]):
+    #     try:
+        news_polarity[idx] = polarity(headline)
+        news_subjectivity[idx] = subjectivity(headline)
+    #     except:
+    #         pass
+    news["Polarity"]=news_polarity
+    date = lambda x : datetime.datetime.strptime(x.split(",")[1][1:-4],'%d %b %Y %H:%M:%S')
+    news['Date'] = news["Date"].apply(date)
+    return news
+
+newsDf = get_news(tickerInfo["longName"],days=3)
+newsDf["Date"] = newsDf["Date"].dt.strftime("%d/%m %H:%M")
+newsDf = newsDf.set_index("Date")
+with st.beta_expander('News'):
+    st.dataframe(newsDf)
 
 
-
-
+with st.beta_expander("This app's Python code"):
+    st.code(get_file_content_as_string("streamlit_app.py"))
