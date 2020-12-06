@@ -18,6 +18,8 @@ import numpy as np
 from textblob import TextBlob
 import datetime
 
+### for python code
+import urllib
 
 #################CONFIG##########################
 theme = "simple_white"
@@ -162,9 +164,26 @@ def get_news(query,days=1):
 newsDf = get_news(tickerInfo["longName"],days=3)
 newsDf["Date"] = newsDf["Date"].dt.strftime("%d/%m %H:%M")
 newsDf = newsDf.set_index("Date")
-with st.beta_expander('News'):
+with st.beta_expander('Google News'):
     st.dataframe(newsDf)
 
+def get_file_content_as_string(path):
+    url = 'https://raw.githubusercontent.com/alanwong626/market-monitoring/main/app.py'
+    response = urllib.request.urlopen(url)
+    return response.read().decode("utf-8")
 
 with st.beta_expander("This app's Python code"):
     st.code(get_file_content_as_string("streamlit_app.py"))
+    st.markdown("[View on GitHub](https://github.com/alanwong626/market-m onitoring)",unsafe_allow_html=True)
+
+with st.beta_expander("To do list"):
+    toDo = dict(
+        One = "Add option to compare multiple stocks",
+        Two = "Create dashboard to get best/worst performing stocks of majot indexes (WIP)",
+        Three = "Allow users to search a stock with company name",
+        Four = "Add other sources to obtain data for other assets",
+        Five = "Fix the news tap, allow user to click on hyperlink to news",
+        Six = "Add main page to view most important information (to be defined)",
+        Seven = "Add other ML features, inclduing sentiment scores(?)"
+    )
+    st.json(toDo)
