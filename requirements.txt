@@ -9,4 +9,4 @@ requests
 xmltojson
 textblob
 utils
-googlesearch
+google
