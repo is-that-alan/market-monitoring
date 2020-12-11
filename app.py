@@ -12,13 +12,15 @@ from helperFunctions import * # name_convert, index_performance, get_table_downl
 import pandas as pd
 import datetime
 from pandas_datareader import data,wb
+
+import investpy
 ###################################################################### HELPER EXPLAIN ######################################################################
-# name_convert(keyword)                    --OUPUT--->    ticker (string);                  Convert keyword to ticker by doing a Google search
-# index_performance(index_name)            --OUPUT--->    gainer (df), laggard (df);        Get gainer and laggard of an index from MarketWatch (Google search to find link)
-# get_table_download_link(df)              --OUPUT--->    download_link (html href);        Convert dataframe to a downloadable csv and output download link as html
-# get_news (keyword, days (optional))      --OUPUT--->    news (df);                        Get news from Google's RSS and compute sentiment score, default to one day
-# get_file_content_as_string()             --OUPUT--->    python_code (string);             Get code of this project, we can then use st.code to display the code
-# get_pct_changes(ticker_list)             --OUPUT--->    %changes (df), dates (dict);      Calculate the % change -> daily, wtd, mtd, ytd (beta, need to figure out what to do with trading holiday, and may add quarterly)
+# name_convert(keyword)                    --OUPUT--->    ticker (string);                               Convert keyword to ticker by doing a Google search
+# index_performance(index_name)            --OUPUT--->    gainer (df), laggard (df);                     Get gainer and laggard of an index from MarketWatch (Google search to find link)
+# get_table_download_link(df)              --OUPUT--->    download_link (html href);                     Convert dataframe to a downloadable csv and output download link as html
+# get_news (keyword, days (optional))      --OUPUT--->    news (df);                                     Get news from Google's RSS and compute sentiment score, default to one day
+# get_file_content_as_string()             --OUPUT--->    python_code (string);                          Get code of this project, we can then use st.code to display the code
+# get_pct_changes(ticker_list)             --OUPUT--->    %changes (df), dates (dict), prices (df);      Calculate the % change -> daily, wtd, mtd, ytd (beta, need to figure out what to do with trading holiday, and may add quarterly)
 ##########################################################################################################################################################
 
 
@@ -30,6 +32,76 @@ def pct_change_from_date(df):
     change = round(((end/start)-1)*100,2)
     return f"{change}%"
 
+def get_attribute_investing(df, security, attribute):
+    country = df.loc[df.index[df["name"]== security].to_list()[0]][attribute]
+    return country
+
+def get_asset_data(asset_list,from_date,to_date,asset_type, asset_df):
+    # commodity, bond, currency
+    # etfs and funds need country
+    if asset_type == "Bonds":
+        func = lambda a,s,e : investpy.get_bond_historical_data(a,s,e)
+    elif asset_type == "Currencies":
+        func = lambda a,s,e : investpy.get_currency_cross_historical_data(a,s,e)
+    elif asset_type == "ETFs":
+        func = lambda a,s,e,c : investpy.get_etf_historical_data(a,c,s,e)
+    elif asset_type == "Funds":
+        func = lambda a,s,e, c : investpy.get_fund_historical_data(a, c,s,e)
+    elif asset_type == "Commodities":
+        func = lambda a,s,e : investpy.get_commodity_historical_data(a,s,e)
+    elif asset_type == "Indices":
+        func = lambda a,s,e, c : investpy.get_index_historical_data(a,c,s,e)
+    elif asset_type == "Crypto":
+        func = lambda a,s,e : investpy.get_crypto_historical_data(a,s,e)    
+    df_list = []
+    for asset in asset_list:
+        if asset_type != "ETFs" and asset_type != "Funds" and asset_type != "Indices":
+            df = func(asset,from_date,to_date)
+            df_list.append(df)
+        else:
+            country = get_attribute_investing(asset_df, asset, 'country')
+            df = func(asset,from_date,to_date, country)
+            df_list.append(df)
+    close_list = [df.Close for df in df_list]
+    print(close_list)
+    close_df = pd.concat(close_list,axis=1)
+    close_df.columns = asset_list
+    return df_list, close_df
+
+def get_news(query,days=1):
+        def google_news(query, days):
+            link = "https://news.google.com/news/rss/headlines/section/topic/BUSINESS/search?q={}+when:{}d".format(query,days)
+            return link
+        link = google_news(query,days)
+        r = requests.get(link)
+        res = json.loads(xmltojson.parse(requests.get(link).text))
+        headlines =[]
+        try:
+            for item in res['rss']["channel"]['item']:
+                headline = {}
+                headline['Date'] = item['pubDate']
+                headline['Title'] = item['title']
+                headline['Link'] = item["link"]
+                headlines.append(headline)
+        except KeyError:
+            st.write("""
+            Data unavailable 
+            """)
+        news = pd.DataFrame(headlines)
+        polarity = lambda x: round(TextBlob(x).sentiment.polarity,2)
+        subjectivity = lambda x: round(TextBlob(x).sentiment.subjectivity,2)
+        news_polarity = np.zeros(len(news['Title']))
+        news_subjectivity = np.zeros(len(news['Title']))
+        for idx, headline in enumerate(news["Title"]):
+        #     try:
+            news_polarity[idx] = polarity(headline)
+            news_subjectivity[idx] = subjectivity(headline)
+        #     except:
+        #         pass
+        news["Polarity"]=news_polarity
+        date = lambda x : datetime.datetime.strptime(x.split(",")[1][1:-4],'%d %b %Y %H:%M:%S')
+        news['Date'] = news["Date"].apply(date)
+        return news
 
 #################CONFIG##########################
 template = "simple_white"
@@ -56,10 +128,12 @@ def main():
     2. Index: Search index performance, include data on gainers and laggards
     3. Stock: Get data of a single stock, also works for indexes
     4. Multi-Stocks: Compare and plot multiple stocks (in beta)
-    5. View Source Code: Return source code of this project
+    5. Bonds: a Dashboard on bonds (Limited infomation at the moment)
+    6. Investing: Tool to search with investpy (data from investing.com)
+    7. View Source Code: Return source code of this projec
     """
     st.sidebar.title("Market Monitoring")
-    app_mode = st.sidebar.radio("Choose  app mode",("Dashboard","Index","Stock","Multi-Stocks","View Source Code"))
+    app_mode = st.sidebar.radio("Choose  app mode",("Dashboard","Index","Stock","Multi-Stocks", "Bonds", "Investing","View Source Code"))
     if app_mode == "Dashboard":
         dashboard()
     elif app_mode == "Index":
@@ -68,6 +142,10 @@ def main():
         stock()
     elif app_mode == "Multi-Stocks":
         multi_stocks()
+    elif app_mode == "Bonds":
+        bonds()
+    elif app_mode == "Investing":
+        investing()
     elif app_mode == "View Source Code":
         source_code()
     else:
@@ -77,6 +155,15 @@ def main():
 def dashboard():
     st.title("Market Dashboard")
     st.markdown(" {}, {}".format(today.strftime("%A"),today.strftime("%d-%b-%y, %H:%M")))
+
+    st.title("Let's create a table!")
+    for i in range(1, 10):
+        cols = st.beta_columns(5)
+        cols[0].write(f'{i}')
+        cols[1].write(f'{i * i}')
+        cols[2].write(f'{i * i * i}')
+        cols[3].write('x' * i)
+        cols[4].write('y' * (10-i))
     return None
 
 ################################################## Index ##################################################
@@ -201,6 +288,35 @@ def stock():
 
         with st.beta_expander('Stock Info'):
             st.json(tickerInfo)
+        
+        def make_clickable(link):
+            # target _blank to open new window
+            # extract clickable text to display for your link
+            # st.write(f"""{link}""")
+            # text = link.split('=')[0]
+            text = "Link"
+            # st.write(f"""{text}""")
+            return f'<a target="_blank" href="{link}">{text}</a>'
+
+        
+
+        # link is the column with hyperlinks
+               
+
+        newsDf = get_news(stock_ticker,days=3)
+        newsDf["Date"] = newsDf["Date"].dt.strftime("%d/%m %H:%M")
+        # newsDf = newsDf.set_index("Date")
+
+        newsDf['Link'] = newsDf['Link'].apply(make_clickable)
+        # newsDf = newsDf.to_html(escape=False)
+        # st.write(df, unsafe_allow_html=True) 
+
+        
+        with st.beta_expander('Google News'):
+            # st.table(newsDf)
+            st.write(newsDf.to_html(escape=False, index=False), unsafe_allow_html=True)
+            average_sentiment = round((sum(newsDf.Polarity)/len(newsDf.Polarity)),2)
+            st.write(f"""Average Sentiment: {average_sentiment}""")
 
     return None
 
@@ -213,18 +329,24 @@ def multi_stocks():
     tickers = tickers_input.replace(';',',').split(",")
     if tickers !=  [""]:
         if ticker_mode == "Ticker":
-            pctDf, dates = get_pct_changes(tickers)
+            pctDf, dates, prices = get_pct_changes(tickers)
             st.dataframe(pctDf)
             st.markdown(get_table_download_link(pctDf), unsafe_allow_html=True)
         elif ticker_mode == "Keyword":
             kw_list = []
             for kw in tickers:
                 kw_list.append(name_convert(kw))
-            print(kw_list)
-            pctDf, dates = get_pct_changes(kw_list)
+            pctDf, dates, prices = get_pct_changes(kw_list)
             st.dataframe(pctDf)
             st.markdown(get_table_download_link(pctDf), unsafe_allow_html=True)
-
+        with st.beta_expander("Data"):
+            st.dataframe(prices)
+            st.markdown(get_table_download_link(prices), unsafe_allow_html=True)
+        with st.beta_expander("Plot"):
+            st.write("""To be improved""")
+            st.plotly_chart(px.line(prices), template = template)
+        
+        
     with st.beta_expander("Dates"):
         try:
             for d in dates:
@@ -243,6 +365,92 @@ def multi_stocks():
         start_date_pct = st.text_input("Start Date", f'{(today-datetime.timedelta(90)).strftime(format_date)}')
         end_date_pct = st.text_input("End Date", f'{(today+datetime.timedelta(1)).strftime(format_date)}')
     return None
+################################################## View Source Code ##################################################
+### Location of the table
+table_num = dict(
+    Australia = 1,
+    China = 11,
+    France = 17,
+    Germany = 18,
+    Hong_Kong = 20,
+    India = 23,
+    Indonesia = 24,
+    Italy = 27,
+    Japan = 28,
+    Malaysia = 31,
+    New_Zealand = 38,
+    Philippines = 43,
+    Singapore = 50,
+    South_Korea = 54,
+    Spain = 55,
+    Taiwan = 58,
+    Tailand = 59,
+    Turkey = 60,
+    UK = 63,
+    US = 64
+)
+
+num_other = dict(
+    US_indexes = 66,
+    Commodities = 67,
+    Main_currencies = 70
+)
+
+def bonds():
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    r = requests.get("https://www.investing.com/rates-bonds/world-government-bonds", headers=headers)
+    tables = pd.read_html(r.text)
+    for keys in table_num:
+        with st.beta_expander(f"{keys.replace('_',' ')}"):
+            st.dataframe((tables[table_num[keys]]).drop(['Unnamed: 0','Unnamed: 9'],axis=1))
+################################################## Investing ##################################################
+
+
+def investing():
+    investing_mode = st.sidebar.selectbox("Select asset class", ("Bonds", "Currencies", "ETFs", "Funds", "Commodities", "Indices", "Crypto"))
+    bonds_df = investpy.bonds.bonds_as_df()
+    currencies_df = investpy.currency_crosses.currency_crosses_as_df()
+    commodities_df = investpy.commodities.commodities_as_df()
+    etfs_df = investpy.etfs.etfs_as_df()
+    funds_df = investpy.funds.funds_as_df()
+    indices_df = investpy.indices.indices_as_df()
+    crypto_df = investpy.crypto.cryptos_as_df()
+    if investing_mode == "Bonds":
+        asset_select = st.sidebar.multiselect("Select Assets", bonds_df["name"])
+        asset_df = bonds_df
+    elif investing_mode == "Currencies":
+        asset_select = st.sidebar.multiselect("Select Assets", currencies_df["name"])
+        asset_df = currencies_df
+    elif investing_mode ==  "ETFs":
+        asset_select = st.sidebar.multiselect("Select Assets", etfs_df["name"])
+        asset_df = etfs_df
+    elif investing_mode == "Funds":
+        asset_select = st.sidebar.multiselect("Select Assets", funds_df["name"])
+        asset_df = funds_df
+    elif investing_mode == "Commodities":
+        asset_select = st.sidebar.multiselect("Select Assets", commodities_df["name"])
+        asset_df = commodities_df
+    elif investing_mode ==  "Indices":
+        asset_select = st.sidebar.multiselect("Select Assets", indices_df["name"])
+        asset_df = indices_df
+    elif investing_mode ==  "Crypto":
+        asset_select = st.sidebar.multiselect("Select Assets", crypto_df["name"])
+        asset_df = crypto_df
+
+    from_date = st.sidebar.text_input("Start Date",(today-datetime.timedelta(30)).strftime(format_date))
+    to_date = st.sidebar.text_input("End Date",today.strftime(format_date))
+    from_date = datetime.datetime.strptime(from_date, format_date).strftime('%d/%m/%Y')
+    to_date = datetime.datetime.strptime(to_date, format_date).strftime('%d/%m/%Y')
+    # st.write(f"{type(asset_select)}: {asset_select}, {from_date}, {to_date}")
+    if asset_select != []:
+        df_list, close_df = get_asset_data(asset_select, from_date,to_date,investing_mode,asset_df)
+        st.dataframe(close_df)
+        st.markdown(get_table_download_link(close_df), unsafe_allow_html=True)
+
+
+
+    return None
+
 ################################################## View Source Code ##################################################
 def source_code():
     soruce_code = get_file_content_as_string()

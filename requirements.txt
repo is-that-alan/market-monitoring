@@ -11,3 +11,4 @@ textblob
 utils
 google
 pandas-datareader
+investpy

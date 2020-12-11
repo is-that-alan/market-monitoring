@@ -104,6 +104,7 @@ def get_file_content_as_string():
 
 def get_pct_changes(tickers):
     df_list = []
+    price_list = []
     for ticker in tickers:
         l_year = datetime.date.today() - pd.tseries.offsets.YearBegin() - datetime.timedelta(1)
         prices = yf.download(ticker, start=l_year)['Close']
@@ -133,9 +134,16 @@ def get_pct_changes(tickers):
         df = pd.DataFrame(data=[[ticker, close, daily, wtd, mtd,  ytd]], 
                           columns=['Ticker', 'Close', 'Daily (%)', 'WTD (%)', 'MTD (%)', 'YTD (%)'])
         df_list.append(df)
+        price_list.append(prices)
     try:
         changes = pd.concat(df_list)
+        priceDf = pd.concat(price_list, axis=1)
+        priceDf.columns = tickers
+
     except:
         changes = df_list[0]
-    return changes,dates
+        # priceDf = price_list[0]
+    
+    print(priceDf)
+    return changes,dates, priceDf
 ################################################
