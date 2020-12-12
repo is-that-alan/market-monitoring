@@ -103,6 +103,168 @@ def get_news(query,days=1):
         news['Date'] = news["Date"].apply(date)
         return news
 
+def noline_plot(df, line_num):
+    layout = go.Layout(
+        xaxis=dict(
+            autorange=True,
+            showgrid=False,
+            ticks='',
+            showticklabels=False
+        ),
+        yaxis=dict(
+            autorange=True,
+            showgrid=False,
+            ticks='',
+            showticklabels=False
+        ),
+        showlegend = False,
+        margin=go.layout.Margin(
+        l=0, #left margin
+        r=0, #right margin
+        b=0, #bottom margin
+        t=0  #top margin
+        )
+    )
+
+    fig = px.line(df.values, template = "plotly_white",width=80, height=40)
+    fig.update_layout(layout)
+    fig.update_xaxes(showgrid=False, zeroline=False, visible=False)
+    fig.update_yaxes(showgrid=False, zeroline=False,visible=False)
+    if df[-1] > line_num:
+        fig.add_hline(y=line_num, line_dash="dot",line_color="#86C29C")
+        fig.update_traces(line_color='green')
+    elif df[-1] < line_num:
+        fig.add_hline(y=line_num, line_dash="dot",line_color="#FF6961")
+        fig.update_traces(line_color='red')
+#     fig.add_vline(x=1000, line_dash="dot",line_color="green",annotation_text="Jan 1, 2018 baseline", 
+#               annotation_position="bottom right")
+    
+    return fig
+
+    ### for dashboard
+
+def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", proxy = None):
+    data = yf.download(  # or pdr.get_data_yahoo(...
+            # tickers list or string as well
+            tickers = tickers,
+
+            # use "period" instead of start/end
+            # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+            # (optional, default is '1mo')
+            period = period,
+
+            # fetch data by interval (including intraday if period < 60 days)
+            # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+            # (optional, default is '1d')
+            interval = interval,
+
+            # group by ticker (to access via data['SPY'])
+            # (optional, default is 'column')
+            group_by = group_by,
+
+            # adjust all OHLC automatically
+            # (optional, default is False)
+            auto_adjust = True,
+
+            # download pre/post regular market hours data
+            # (optional, default is False)
+            prepost = False,
+
+            # use threads for mass downloading? (True/False/Integer)
+            # (optional, default is True)
+            threads = True,
+
+            # proxy URL scheme use use when downloading?
+            # (optional, default is None)
+            proxy = proxy
+        )
+    
+#     print(data)
+    one_year_data = yf.download(tickers,period="1y",group_by=group_by)
+    data_dict = {}
+    pervious_dict = {}
+    one_year_dict = {}
+    for ticker in tickers:
+        dataDf = data[ticker].dropna()
+        data_dict[ticker] = dataDf
+        start = str(dataDf.index[0]-datetime.timedelta(1))[0:10]
+        end = str(dataDf.index[0])[0:10]
+        pervious_close = yf.download(ticker,start = start, end = end)
+        pervious_dict[ticker] = pervious_close
+        one_year_dict[ticker] = one_year_data[ticker].dropna()
+    
+    return data_dict, pervious_dict, one_year_dict
+
+def range_plot(df):
+    maximum = df.max()
+    minimum = df.min()
+    average = df.mean()
+    current = df[-1]
+    nor_average = ((average - minimum)/(maximum-minimum))*100
+    nor_current = ((current - minimum)/(maximum-minimum))*100
+    print(nor_average,nor_current)
+    layout = go.Layout(
+        autosize=False,
+        xaxis=dict(
+            autorange=True,
+            showgrid=False,
+            ticks='',
+            showticklabels=False
+        ),
+        yaxis=dict(
+            autorange=True,
+            showgrid=False,
+            ticks='',
+            showticklabels=False
+        ),
+        showlegend = False,
+        margin=go.layout.Margin(
+            autoexpand=False,
+            l=0, #left margin
+            r=0, #right margin
+            b=0, #bottom margin
+            t=0  #top margin
+        )
+    )
+
+    fig = px.scatter(template = "plotly_white",width=140, height=50)
+    fig.update_layout(layout)
+    fig.update_xaxes(showgrid=False, zeroline=False, visible=False)
+    fig.update_yaxes(showgrid=False, zeroline=False,visible=False)
+    
+    
+#     fig.add_hline(y=120,line_color="red")
+    fig.add_trace(go.Scatter(x=[0,100], y=[50,50],
+                    mode='markers',
+                    marker_size=0.1,
+                    marker_symbol= "line-ns-open",
+                    marker_color="black",
+#                     name='markers'
+                            ))
+    fig.add_trace(go.Scatter(x=[0,100], y=[50,50],
+                    mode='lines',
+                    line_width = 2.5,
+                    marker_color='black'
+                     ))
+    # fig.add_hline(y=50,line_color="black")
+
+    fig.add_trace(go.Scatter(x=[nor_average], y=[50],
+                    mode='markers',
+                    marker_size=6.5,
+                    marker_symbol= "diamond",
+                    marker_color="red",
+#                     name='markers'
+                            ))
+    fig.add_trace(go.Scatter(x=[nor_current], y=[50],
+                    mode='markers',
+                    marker_size=6.5,
+                    marker_symbol= "circle",
+                    marker_color="blue",
+#                     name='markers'
+                            ))
+#     fig.add_vline(x=1000, line_dash="dot",line_color="green",annotation_text="Jan 1, 2018 baseline", 
+#               annotation_position="bottom right")
+    return fig
 #################CONFIG##########################
 template = "simple_white"
 
@@ -153,17 +315,65 @@ def main():
 
 ################################################## Dashboard ##################################################
 def dashboard():
-    st.title("Market Dashboard")
+    # st.title("Market Dashboard")
     st.markdown(" {}, {}".format(today.strftime("%A"),today.strftime("%d-%b-%y, %H:%M")))
 
-    st.title("Let's create a table!")
-    for i in range(1, 10):
+    st.title("Market Data Dashboard")
+    dashboard_tickers = ([('^N225', 'Nikkei 225'),
+                        ('^HSCE', 'HSCEI'),
+                        ('000001.SS', 'SH COMP'),
+                        ('^KS11', 'KOSPI'),
+                        ('^AXJO', 'ASX200'),
+                        ('^NSEI', 'NSE NIFTY 50'),
+                        ('^GSPC', 'S&P500'),
+                        ('ES=F', 'S&P 500 Futures'),
+                        ('^STOXX50E', 'EUROSTOXX 50'),
+                        ('^VIX', 'VIX Index')])
+
+    dashboard_data, dashboard_perivous_close, one_year_data = yf_downloader([k[0] for k in dashboard_tickers])
+    
+    cols_title = st.beta_columns(5)
+    cols_title[0].write('')
+    cols_title[1].write('**Current**')
+    cols_title[2].write('**Daily Change**')
+    cols_title[3].write('**Daily Trend**')
+    cols_title[4].write('**1Y Range**')
+
+    
+    for i in range(1, 11):
+        ticker = dashboard_tickers[i-1][0]
         cols = st.beta_columns(5)
-        cols[0].write(f'{i}')
-        cols[1].write(f'{i * i}')
-        cols[2].write(f'{i * i * i}')
-        cols[3].write('x' * i)
-        cols[4].write('y' * (10-i))
+        cols[0].write(f'***{dashboard_tickers[i-1][1]}***')
+        change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
+
+        if change > 0:
+            if i != 10:
+                cols[1].write(f"<font color='green'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
+            else:
+                cols[1].write(f"<font color='green'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
+            # cols[2].write(f'{i * i * i}')
+        elif change < 0:
+            if i != 10:
+                cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
+            else:
+                cols[1].write(f"<font color='red'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
+            # cols[2].write(f'{i * i * i}')
+        else:
+            if i != 10:
+                cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
+            else:
+                cols[1].write(f"<font color='grey'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+                cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
+
+        tempt_fig = noline_plot(dashboard_data[ticker].Close, dashboard_perivous_close[ticker].Close.values[0])
+        cols[3].plotly_chart(tempt_fig)
+        cols[4].plotly_chart(range_plot(one_year_data[ticker].Close))
+
     return None
 
 ################################################## Index ##################################################
@@ -455,7 +665,8 @@ def investing():
 def source_code():
     soruce_code = get_file_content_as_string()
     code_display = st.code(soruce_code)
-    link = st.markdown("[View on GitHub](https://github.com/alanwong626/market-monitoring)",unsafe_allow_html=True)
+    link = st.markdown("[View on GitHub](https://github.com/alanwong626/market-monitoring)",unsafe_allow_html=True)        
+
     return code_display, link
 
 if __name__ == '__main__':

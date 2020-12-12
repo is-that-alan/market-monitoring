@@ -3,7 +3,7 @@ streamlit
 pandas
 matplotlib
 numpy
-plotly
+plotly == 4.14.1
 xlsxwriter
 requests
 xmltojson
