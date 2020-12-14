@@ -143,6 +143,59 @@ def noline_plot(df, line_num):
 
     ### for dashboard
 
+### Pervious version, to be fixed
+# def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", proxy = None):
+#     data = yf.download(  # or pdr.get_data_yahoo(...
+#             # tickers list or string as well
+#             tickers = tickers,
+
+#             # use "period" instead of start/end
+#             # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#             # (optional, default is '1mo')
+#             period = period,
+
+#             # fetch data by interval (including intraday if period < 60 days)
+#             # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#             # (optional, default is '1d')
+#             interval = interval,
+
+#             # group by ticker (to access via data['SPY'])
+#             # (optional, default is 'column')
+#             group_by = group_by,
+
+#             # adjust all OHLC automatically
+#             # (optional, default is False)
+#             auto_adjust = True,
+
+#             # download pre/post regular market hours data
+#             # (optional, default is False)
+#             prepost = False,
+
+#             # use threads for mass downloading? (True/False/Integer)
+#             # (optional, default is True)
+#             threads = True,
+
+#             # proxy URL scheme use use when downloading?
+#             # (optional, default is None)
+#             proxy = proxy
+#         )
+    
+# #     print(data)
+#     one_year_data = yf.download(tickers,period="1y",group_by=group_by)
+#     data_dict = {}
+#     pervious_dict = {}
+#     one_year_dict = {}
+#     for ticker in tickers:
+#         dataDf = data[ticker].dropna()
+#         data_dict[ticker] = dataDf
+#         start = str(dataDf.index[0]-datetime.timedelta(1))[0:10]
+#         end = str(dataDf.index[0])[0:10]
+#         pervious_close = yf.download(ticker,start = start, end = end)
+#         pervious_dict[ticker] = pervious_close
+#         one_year_dict[ticker] = one_year_data[ticker].dropna()
+    
+#     return data_dict, pervious_dict, one_year_dict
+
 def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", proxy = None):
     data = yf.download(  # or pdr.get_data_yahoo(...
             # tickers list or string as well
@@ -187,9 +240,7 @@ def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", pro
     for ticker in tickers:
         dataDf = data[ticker].dropna()
         data_dict[ticker] = dataDf
-        start = str(dataDf.index[0]-datetime.timedelta(1))[0:10]
-        end = str(dataDf.index[0])[0:10]
-        pervious_close = yf.download(ticker,start = start, end = end)
+        pervious_close = yf.download(ticker,period = '5d').tail(2).head(1)
         pervious_dict[ticker] = pervious_close
         one_year_dict[ticker] = one_year_data[ticker].dropna()
     
