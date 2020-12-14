@@ -221,7 +221,7 @@ def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", pro
 
             # download pre/post regular market hours data
             # (optional, default is False)
-            prepost = False,
+            prepost = True,
 
             # use threads for mass downloading? (True/False/Integer)
             # (optional, default is True)
@@ -368,9 +368,9 @@ def main():
 def dashboard():
     # st.title("Market Dashboard")
     st.markdown(" {}, {}".format(today.strftime("%A"),today.strftime("%d-%b-%y, %H:%M")))
-
+    
     st.title("Market Data Dashboard")
-    dashboard_tickers = ([('^N225', 'Nikkei 225'),
+    dashboard_tickers_list = ([('^N225', 'Nikkei 225'),
                         ('^HSCE', 'HSCEI'),
                         ('000001.SS', 'SH COMP'),
                         ('^KS11', 'KOSPI'),
@@ -379,8 +379,25 @@ def dashboard():
                         ('^GSPC', 'S&P500'),
                         ('ES=F', 'S&P 500 Futures'),
                         ('^STOXX50E', 'EUROSTOXX 50'),
-                        ('^VIX', 'VIX Index')])
-
+                        ('^VIX', 'VIX Index'),
+                        ('AUDUSD=X', 'AUD USD'),
+                        ('USDJPY=X', 'USD JPY'),
+                        ('USDKRW=X', 'USD KRW'),
+                        ('USDTWD=X', 'USD TWD'),
+                        ('USDINR=X', 'USD INR'),
+                        ('USDCNY=X', 'AUD USD'),
+                        ('USDIDR=X', 'USD IDR'),
+                        ('EURUSD=X', 'EUR USD'),
+                        ('GBPUSD=X', 'GBP USD'),
+                        ('CL=F', 'WTI Crude'),
+                        ('GC=F', 'Gold'),
+                        ('BTC-USD','Bitcoin USD'),
+                        ('^IXIC', 'NASDAQ'),
+                        ('^TWII', 'TSEC weighted index')])
+    name_only = lambda x: x[1]
+    dashboard_tickers = st.sidebar.multiselect("Assets", options = dashboard_tickers_list, default = dashboard_tickers_list[0:10], format_func = name_only)
+    # new_tickers = st.sidebar.text_input("Enter a (ticker, name) tuple (or a list of)")
+    # dashboard_tickers_list = dashboard_tickers_list.append(list(new_tickers))
     dashboard_data, dashboard_perivous_close, one_year_data = yf_downloader([k[0] for k in dashboard_tickers])
     
     cols_title = st.beta_columns(5)
@@ -391,14 +408,14 @@ def dashboard():
     cols_title[4].write('**1Y Range**')
 
     
-    for i in range(1, 11):
+    for i in range(len(dashboard_tickers)+1):
         ticker = dashboard_tickers[i-1][0]
         cols = st.beta_columns(5)
         cols[0].write(f'***{dashboard_tickers[i-1][1]}***')
         change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
 
         if change > 0:
-            if i != 10:
+            if i < 10:
                 cols[1].write(f"<font color='green'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
             else:
@@ -406,7 +423,7 @@ def dashboard():
                 cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
             # cols[2].write(f'{i * i * i}')
         elif change < 0:
-            if i != 10:
+            if i < 10:
                 cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
             else:
@@ -414,7 +431,7 @@ def dashboard():
                 cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
             # cols[2].write(f'{i * i * i}')
         else:
-            if i != 10:
+            if i < 10:
                 cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
             else:
