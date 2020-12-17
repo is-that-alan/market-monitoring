@@ -253,7 +253,6 @@ def range_plot(df):
     current = df[-1]
     nor_average = ((average - minimum)/(maximum-minimum))*100
     nor_current = ((current - minimum)/(maximum-minimum))*100
-    print(nor_average,nor_current)
     layout = go.Layout(
         autosize=False,
         xaxis=dict(
@@ -331,6 +330,7 @@ st.set_page_config(
 
 today = datetime.datetime.today()
 
+
 #################CONFIG END#######################
    
 ##### MAIN #####
@@ -345,24 +345,27 @@ def main():
     6. Investing: Tool to search with investpy (data from investing.com)
     7. View Source Code: Return source code of this projec
     """
-    st.sidebar.title("Market Monitoring")
-    app_mode = st.sidebar.radio("Choose  app mode",("Dashboard","Index","Stock","Multi-Stocks", "Bonds", "Investing","View Source Code"))
-    if app_mode == "Dashboard":
+    st.sidebar.title("Market Data Dashboard")
+    st.sidebar.write("Asia Markets Mointoring")
+    app_mode = st.sidebar.radio("App Mode",("Market Dashboard","Index Performance","Stock Data","Multi-Stocks Data", "Bonds Performance", "Investing.com","View Source Code"))
+    # st.sidebar.write("__AWong__")
+    if app_mode == "Market Dashboard":
         dashboard()
-    elif app_mode == "Index":
+    elif app_mode == "Index Performance":
         index()
-    elif app_mode == "Stock":
+    elif app_mode == "Stock Data":
         stock()
-    elif app_mode == "Multi-Stocks":
+    elif app_mode == "Multi-Stocks Data":
         multi_stocks()
-    elif app_mode == "Bonds":
+    elif app_mode == "Bonds Performance":
         bonds()
-    elif app_mode == "Investing":
+    elif app_mode == "Investing.com":
         investing()
     elif app_mode == "View Source Code":
         source_code()
     else:
         raise RuntimeError
+    
 
 ################################################## Dashboard ##################################################
 def dashboard():
@@ -395,7 +398,8 @@ def dashboard():
                         ('^IXIC', 'NASDAQ'),
                         ('^TWII', 'TSEC weighted index')])
     name_only = lambda x: x[1]
-    dashboard_tickers = st.sidebar.multiselect("Assets", options = dashboard_tickers_list, default = dashboard_tickers_list[0:10], format_func = name_only)
+    dashboard_tickers = dashboard_tickers_list[0:10]
+    # dashboard_tickers = st.sidebar.multiselect("Assets", options = dashboard_tickers_list, default = dashboard_tickers_list[0:10], format_func = name_only)
     # new_tickers = st.sidebar.text_input("Enter a (ticker, name) tuple (or a list of)")
     # dashboard_tickers_list = dashboard_tickers_list.append(list(new_tickers))
     dashboard_data, dashboard_perivous_close, one_year_data = yf_downloader([k[0] for k in dashboard_tickers])
@@ -408,14 +412,14 @@ def dashboard():
     cols_title[4].write('**1Y Range**')
 
     
-    for i in range(len(dashboard_tickers)+1):
-        ticker = dashboard_tickers[i-1][0]
+    for i in range(len(dashboard_tickers)):
+        ticker = dashboard_tickers[i][0]
         cols = st.beta_columns(5)
-        cols[0].write(f'***{dashboard_tickers[i-1][1]}***')
+        cols[0].write(f'***{dashboard_tickers[i][1]}***')
         change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
 
         if change > 0:
-            if i < 10:
+            if i < 9:
                 cols[1].write(f"<font color='green'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
             else:
@@ -423,7 +427,7 @@ def dashboard():
                 cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
             # cols[2].write(f'{i * i * i}')
         elif change < 0:
-            if i < 10:
+            if i < 9:
                 cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
             else:
@@ -431,7 +435,7 @@ def dashboard():
                 cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
             # cols[2].write(f'{i * i * i}')
         else:
-            if i < 10:
+            if i < 9:
                 cols[1].write(f"<font color='red'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
                 cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
             else:
@@ -442,11 +446,38 @@ def dashboard():
         cols[3].plotly_chart(tempt_fig)
         cols[4].plotly_chart(range_plot(one_year_data[ticker].Close))
 
+    # with st.beta_expander("Currency"):
+    #     for i in range(len(dashboard_tickers[10:19])):
+    #         ticker = dashboard_tickers[i+10][0]
+    #         cols = st.beta_columns(5)
+    #         cols[0].write(f'***{dashboard_tickers[i+10][1]}***')
+    #         change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
+    #         print(change)
+    #         if change > 0:
+    #             cols[1].write(f"<font color='green'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+    #             cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
+    #             # cols[2].write(f'{i * i * i}')
+    #         elif change < 0:
+    #             cols[1].write(f"<font color='red'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+    #             cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
+    #             # cols[2].write(f'{i * i * i}')
+    #         else:
+    #             cols[1].write(f"<font color='grey'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
+    #             cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
+
+    #         tempt_fig = noline_plot(dashboard_data[ticker].Close, dashboard_perivous_close[ticker].Close.values[0])
+    #         cols[3].plotly_chart(tempt_fig)
+    #         cols[4].plotly_chart(range_plot(one_year_data[ticker].Close))                
+            
+    st.write("__Disclaimer__: Data collected from Yahoo Finance and Investing.com. This dashboard is for demonstration purposes only.")
+    st.write("__Contact__: thw.alawnong@gmail.com")
+
     return None
 
 ################################################## Index ##################################################
 def index():
     index_name = st.sidebar.text_input("Index", "")
+    st.sidebar.write("Search a stock market index by keyword or ticker")
     if index_name != "":
         index_symbol = name_convert(index_name)
         indexData = yf.Ticker(index_symbol)
@@ -495,6 +526,7 @@ def stock():
     stock_ticker_input = st.sidebar.text_input("Ticker or Keywords", 'Alibaba Hong Kong')
     start = st.sidebar.text_input("Start Date", f'{(today-datetime.timedelta(90)).strftime(format_date)}')
     end = st.sidebar.text_input("End Date", f'{(today+datetime.timedelta(1)).strftime(format_date)}')
+    st.sidebar.write("Search a stock or index by keyword or ticker.")
     
     if stock_ticker_input != "":
         if stock_mode == "Keyword":
@@ -605,6 +637,7 @@ def multi_stocks():
     ticker_mode = st.sidebar.selectbox("Ticker mode or Keyword mode", ("Keyword", "Ticker"))
     tickers_input = st.sidebar.text_input("Enter the stock tickers, separated by a ' , ' or ' ; ' ")
     tickers = tickers_input.replace(';',',').split(",")
+    st.sidebar.write("Search multiple stock or indexes by keywords or tickers.")
     if tickers !=  [""]:
         if ticker_mode == "Ticker":
             pctDf, dates, prices = get_pct_changes(tickers)
@@ -734,8 +767,11 @@ def source_code():
     soruce_code = get_file_content_as_string()
     code_display = st.code(soruce_code)
     link = st.markdown("[View on GitHub](https://github.com/alanwong626/market-monitoring)",unsafe_allow_html=True)        
-
+    st.write("__Disclaimer__: Data collected from Yahoo Finance and Investing.com. This dashboard is for demonstration purposes only.")
+    st.write("__Contact__: thw.alawnong@gmail.com")
+    
     return code_display, link
 
 if __name__ == '__main__':
     main()
+    
