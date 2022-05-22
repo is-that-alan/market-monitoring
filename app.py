@@ -7,8 +7,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import datetime
-from helperFunctions import * # name_convert, index_performance, get_table_download_link, get_news, get_file_content_as_string, get_pct_changes
-
+from helperFunctions import * # Importaning name_convert, index_performance, get_table_download_link, get_news, get_file_content_as_string, get_pct_changes
+from typing import Tuple, Union
 import pandas as pd
 import datetime
 from pandas_datareader import data,wb
@@ -25,18 +25,18 @@ import investpy
 
 
 ##### Additional functions (To be added to helperFunctions #####
-def pct_change_from_date(df):
+def pct_change_from_date(df: pd.DataFrame) -> str:
     close = df.Close
     start = close[0]
     end = close[-1]
     change = round(((end/start)-1)*100,2)
     return f"{change}%"
 
-def get_attribute_investing(df, security, attribute):
+def get_attribute_investing(df: pd.DataFrame, security: str, attribute:str) -> pd.DataFrame:
     country = df.loc[df.index[df["name"]== security].to_list()[0]][attribute]
     return country
 
-def get_asset_data(asset_list,from_date,to_date,asset_type, asset_df):
+def get_asset_data(asset_list: list,from_date: str,to_date: str,asset_type: str, asset_df: pd.DataFrame) -> Tuple[list, pd.DataFrame]:
     # commodity, bond, currency
     # etfs and funds need country
     if asset_type == "Bonds":
@@ -63,12 +63,12 @@ def get_asset_data(asset_list,from_date,to_date,asset_type, asset_df):
             df = func(asset,from_date,to_date, country)
             df_list.append(df)
     close_list = [df.Close for df in df_list]
-    print(close_list)
+    # print(close_list)
     close_df = pd.concat(close_list,axis=1)
     close_df.columns = asset_list
     return df_list, close_df
 
-def get_news(query,days=1):
+def get_news(query: str,days=1) -> pd.DataFrame:
         def google_news(query, days):
             link = "https://news.google.com/news/rss/headlines/section/topic/BUSINESS/search?q={}+when:{}d".format(query,days)
             return link
@@ -103,7 +103,7 @@ def get_news(query,days=1):
         news['Date'] = news["Date"].apply(date)
         return news
 
-def noline_plot(df, line_num):
+def noline_plot(df: pd.DataFrame, line_num: str) :
     layout = go.Layout(
         xaxis=dict(
             autorange=True,
@@ -143,60 +143,8 @@ def noline_plot(df, line_num):
 
     ### for dashboard
 
-### Pervious version, to be fixed
-# def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", proxy = None):
-#     data = yf.download(  # or pdr.get_data_yahoo(...
-#             # tickers list or string as well
-#             tickers = tickers,
 
-#             # use "period" instead of start/end
-#             # valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
-#             # (optional, default is '1mo')
-#             period = period,
-
-#             # fetch data by interval (including intraday if period < 60 days)
-#             # valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
-#             # (optional, default is '1d')
-#             interval = interval,
-
-#             # group by ticker (to access via data['SPY'])
-#             # (optional, default is 'column')
-#             group_by = group_by,
-
-#             # adjust all OHLC automatically
-#             # (optional, default is False)
-#             auto_adjust = True,
-
-#             # download pre/post regular market hours data
-#             # (optional, default is False)
-#             prepost = False,
-
-#             # use threads for mass downloading? (True/False/Integer)
-#             # (optional, default is True)
-#             threads = True,
-
-#             # proxy URL scheme use use when downloading?
-#             # (optional, default is None)
-#             proxy = proxy
-#         )
-    
-# #     print(data)
-#     one_year_data = yf.download(tickers,period="1y",group_by=group_by)
-#     data_dict = {}
-#     pervious_dict = {}
-#     one_year_dict = {}
-#     for ticker in tickers:
-#         dataDf = data[ticker].dropna()
-#         data_dict[ticker] = dataDf
-#         start = str(dataDf.index[0]-datetime.timedelta(1))[0:10]
-#         end = str(dataDf.index[0])[0:10]
-#         pervious_close = yf.download(ticker,start = start, end = end)
-#         pervious_dict[ticker] = pervious_close
-#         one_year_dict[ticker] = one_year_data[ticker].dropna()
-    
-#     return data_dict, pervious_dict, one_year_dict
-
-def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", proxy = None):
+def yf_downloader(tickers: Union[str, list], period = "1d", interval="1m",group_by = "ticker", proxy = None) -> Tuple[dict, dict, dict]:
     data = yf.download(  # or pdr.get_data_yahoo(...
             # tickers list or string as well
             tickers = tickers,
@@ -246,7 +194,7 @@ def yf_downloader(tickers, period = "1d", interval="1m",group_by = "ticker", pro
     
     return data_dict, pervious_dict, one_year_dict
 
-def range_plot(df):
+def range_plot(df: pd.DataFrame):
     maximum = df.max()
     minimum = df.min()
     average = df.mean()
@@ -404,7 +352,7 @@ def dashboard():
     # dashboard_tickers_list = dashboard_tickers_list.append(list(new_tickers))
     dashboard_data, dashboard_perivous_close, one_year_data = yf_downloader([k[0] for k in dashboard_tickers])
     
-    cols_title = st.beta_columns(5)
+    cols_title = st.columns(5)
     cols_title[0].write('')
     cols_title[1].write('**Current**')
     cols_title[2].write('**Daily Change**')
@@ -414,10 +362,10 @@ def dashboard():
     
     for i in range(len(dashboard_tickers)):
         ticker = dashboard_tickers[i][0]
-        cols = st.beta_columns(5)
+        cols = st.columns(5)
         cols[0].write(f'***{dashboard_tickers[i][1]}***')
         change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
-
+        ### Hard coding table set up
         if change > 0:
             if i < 9:
                 cols[1].write(f"<font color='green'>{int(round(dashboard_data[ticker].Close[-1],0))}</font>", unsafe_allow_html=True)
@@ -446,29 +394,7 @@ def dashboard():
         cols[3].plotly_chart(tempt_fig)
         cols[4].plotly_chart(range_plot(one_year_data[ticker].Close))
 
-    # with st.beta_expander("Currency"):
-    #     for i in range(len(dashboard_tickers[10:19])):
-    #         ticker = dashboard_tickers[i+10][0]
-    #         cols = st.beta_columns(5)
-    #         cols[0].write(f'***{dashboard_tickers[i+10][1]}***')
-    #         change = round(((dashboard_data[ticker].Close[-1]/dashboard_perivous_close[ticker].Close[0])-1)*100,2)
-    #         print(change)
-    #         if change > 0:
-    #             cols[1].write(f"<font color='green'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
-    #             cols[2].markdown(f"<font color='green'>{change}%</font>", unsafe_allow_html=True)
-    #             # cols[2].write(f'{i * i * i}')
-    #         elif change < 0:
-    #             cols[1].write(f"<font color='red'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
-    #             cols[2].markdown(f"<font color='red'>{change}%</font>", unsafe_allow_html=True)
-    #             # cols[2].write(f'{i * i * i}')
-    #         else:
-    #             cols[1].write(f"<font color='grey'>{(round(dashboard_data[ticker].Close[-1],2))}</font>", unsafe_allow_html=True)
-    #             cols[2].markdown(f"<font color='grey'>{change}%</font>", unsafe_allow_html=True)
 
-    #         tempt_fig = noline_plot(dashboard_data[ticker].Close, dashboard_perivous_close[ticker].Close.values[0])
-    #         cols[3].plotly_chart(tempt_fig)
-    #         cols[4].plotly_chart(range_plot(one_year_data[ticker].Close))                
-            
     st.write("__Disclaimer__: Data collected from Yahoo Finance and Investing.com. This dashboard is for demonstration purposes only.")
     st.write("__Contact__: thw.alawnong@gmail.com")
 
@@ -499,16 +425,16 @@ def index():
         st.plotly_chart(index_fig,template=template)
 
         gainers, laggards = index_performance(index_name)
-        with st.beta_expander('Gainers'):
+        with st.expander('Gainers'):
             st.dataframe(gainers)
-        with st.beta_expander('Laggards'):
+        with st.expander('Laggards'):
             st.dataframe(laggards)
         
-        # with st.beta_expander('Percentage Change'):
+        # with st.expander('Percentage Change'):
         #     st.markdown(f"{index_symbol.replace(r'%5E',r'^')}")
         #     index_pct, index_dates = get_pct_changes(index_symbol.replace(r"%E5",r"^"))
         #     st.dateframe(index_pct)
-        # with st.beta_expander("Dates"):
+        # with st.expander("Dates"):
         #     try:
         #         for d in index_dates:
         #             st.write(f"""{d}: {index_dates[d].strftime('%d/%m/%Y')}""")
@@ -590,13 +516,13 @@ def stock():
         fig.update_yaxes(title_text="<b>Pirce</b>",side = "left", secondary_y=True)
         st.plotly_chart(fig)
 
-        with st.beta_expander('Data Table'):
+        with st.expander('Data Table'):
             # st.line_chart(tickerDf.Close)
             st.dataframe(tickerDf)
             df = tickerDf # your dataframe
             st.markdown(get_table_download_link(df), unsafe_allow_html=True)
 
-        with st.beta_expander('Stock Info'):
+        with st.expander('Stock Info'):
             st.json(tickerInfo)
         
         def make_clickable(link):
@@ -622,7 +548,7 @@ def stock():
         # st.write(df, unsafe_allow_html=True) 
 
         
-        with st.beta_expander('Google News'):
+        with st.expander('Google News'):
             # st.table(newsDf)
             st.write(newsDf.to_html(escape=False, index=False), unsafe_allow_html=True)
             average_sentiment = round((sum(newsDf.Polarity)/len(newsDf.Polarity)),2)
@@ -650,15 +576,15 @@ def multi_stocks():
             pctDf, dates, prices = get_pct_changes(kw_list)
             st.dataframe(pctDf)
             st.markdown(get_table_download_link(pctDf), unsafe_allow_html=True)
-        with st.beta_expander("Data"):
+        with st.expander("Data"):
             st.dataframe(prices)
             st.markdown(get_table_download_link(prices), unsafe_allow_html=True)
-        with st.beta_expander("Plot"):
+        with st.expander("Plot"):
             st.write("""To be improved""")
             st.plotly_chart(px.line(prices), template = template)
         
         
-    with st.beta_expander("Dates"):
+    with st.expander("Dates"):
         try:
             for d in dates:
                 st.write(f"""{d}: {dates[d].strftime('%d/%m/%Y')}""")
@@ -666,12 +592,12 @@ def multi_stocks():
             st.write("""These dates are from the dataframe of the last asset in your search list.""")
         except:
             pass
-    with st.beta_expander("Delay Information"):
+    with st.expander("Delay Information"):
         delay = pd.read_html("https://help.yahoo.com/kb/exchanges-data-providers-yahoo-finance-sln2310.html")[0]
         st.dataframe(delay)
         link = st.markdown("[Yahoo Finance](https://help.yahoo.com/kb/exchanges-data-providers-yahoo-finance-sln2310.html)",unsafe_allow_html=True)
 
-    with st.beta_expander("Percentage Change Calculation"):
+    with st.expander("Percentage Change Calculation"):
         st.write("""To be implemented""")
         start_date_pct = st.text_input("Start Date", f'{(today-datetime.timedelta(90)).strftime(format_date)}')
         end_date_pct = st.text_input("End Date", f'{(today+datetime.timedelta(1)).strftime(format_date)}')
@@ -712,7 +638,7 @@ def bonds():
     r = requests.get("https://www.investing.com/rates-bonds/world-government-bonds", headers=headers)
     tables = pd.read_html(r.text)
     for keys in table_num:
-        with st.beta_expander(f"{keys.replace('_',' ')}"):
+        with st.expander(f"{keys.replace('_',' ')}"):
             st.dataframe((tables[table_num[keys]]).drop(['Unnamed: 0','Unnamed: 9'],axis=1))
 ################################################## Investing ##################################################
 
