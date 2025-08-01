@@ -11,7 +11,7 @@ from helperFunctions import * # Importaning name_convert, index_performance, get
 from typing import Tuple, Union
 import pandas as pd
 import datetime
-from pandas_datareader import data,wb
+from pandas_datareader import data, wb
 
 import investpy
 ###################################################################### HELPER EXPLAIN ######################################################################
